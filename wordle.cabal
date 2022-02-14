@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fa08f5532cdb18be23704c27f42792334e9910d442bdeb525d926dd3c7bb9a05
+-- hash: 526a832df0999e14b8ede3fd0421991ffbb789d6d680426c6e9d27a9254d2160
 
 name:           wordle
 version:        0.1.0.0
@@ -33,7 +33,8 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      QuickCheck
+    , base >=4.7 && <5
   default-language: Haskell2010
 
 executable wordle-exe
@@ -45,7 +46,8 @@ executable wordle-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      QuickCheck
+    , base >=4.7 && <5
     , wordle
   default-language: Haskell2010
 
@@ -58,6 +60,7 @@ test-suite wordle-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      QuickCheck
+    , base >=4.7 && <5
     , wordle
   default-language: Haskell2010

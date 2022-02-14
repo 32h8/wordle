@@ -1,8 +1,10 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Main where
 
 import Words
+import Test.QuickCheck
 
-data Color = Green | Yellow | Gray
+data Color = Green | Yellow | Gray deriving (Show, Eq)
 type Feedback = [(Char, Color)]
 type WordleState = [Feedback]
 
@@ -24,33 +26,41 @@ matchGreen feedback w =
     $ filter (isGreen . snd . fst) 
     $ zip feedback w
 
-matchYellow :: Feedback -> String -> Bool
-matchYellow feedback w =
+matchNonGreen :: Feedback -> String -> Bool 
+matchNonGreen feedback w =
     all (\((a,_),b) -> a /= b)
-    $ filter (isYellow . snd . fst) 
+    $ filter (not . isGreen . snd . fst) 
     $ zip feedback w
 
+yellows :: Feedback -> String
+yellows feedback = map fst $ filter (isYellow . snd) feedback
+
+-- in function notGreens we assume input word matches green letters 
+-- otherwise it will be filtered out by function matchGreen
 notGreens :: Feedback -> String -> String
 notGreens feedback w = map snd $ filter (not . isGreen . fst) $ zip (map snd feedback) w
 
-noGrays :: Feedback -> String -> Bool 
-noGrays feedback w = all (not . flip elem w') $ grays
-    where 
-        grays :: [Char]
-        grays = map fst $ filter (isGray . snd) feedback
+hasAllYellows :: Feedback -> String -> Bool
+hasAllYellows feedback w = all (flip elem w') $ yellows feedback
+    where
         w' = notGreens feedback w
 
-hasAllYellows :: Feedback -> String -> Bool
-hasAllYellows feedback w = all (flip elem w') yellows
-    where 
-        yellows :: [Char]
-        yellows = map fst $ filter (isYellow . snd) feedback
+grays :: Feedback -> String
+grays feedback = map fst $ filter (isGray . snd) feedback
+
+noGrays :: Feedback -> String -> Bool 
+noGrays feedback w = 
+    all (not . flip elem w') 
+    $ filter (not . flip elem ys) 
+    $ grays feedback
+    where
+        ys = yellows feedback
         w' = notGreens feedback w
 
 match :: Feedback -> String -> Bool
 match feedback w = 
     matchGreen feedback w
-    && matchYellow feedback w
+    && matchNonGreen feedback w
     && hasAllYellows feedback w
     && noGrays feedback w
 
@@ -93,11 +103,73 @@ step candidates fs = do
                         then putStrLn "End."
                         else step candidates (feedback : fs)
 
+allWords :: [String]
+allWords = guessWords ++ finalWords
+
 main :: IO ()
 main = do
-    let ws = guessWords ++ finalWords
+    let ws = allWords
     putStrLn "instructions for typing colors: "
     putStrLn "type \"gxxxx\" for following color sequence: Green Gray Gray Gray Gray"
     putStrLn "type \"gyxxx\" for following color sequence: Green Yellow Gray Gray Gray"
     putStrLn ""
     step ws []
+
+-- function for generating feedback for given word based on answer
+giveFeedback :: String -> String -> Feedback
+giveFeedback guess answer = 
+    zipWith3 comp [0..] guess answer
+    where
+        count :: Char -> String -> Int
+        count x w = length $ filter (== x) w
+
+        nonGreensInAnswer :: String
+        nonGreensInAnswer = 
+            map fst 
+            $ filter snd
+            $ zip answer 
+            $ zipWith (/=) guess answer 
+
+        comp :: Int -> Char -> Char -> (Char, Color)
+        comp i g a
+            | g == a = (a, Green)
+            | notElem g answer = (g, Gray)
+            | notElem g nonGreensInAnswer = (g, Gray)
+            | elem g nonGreensInAnswer = -- will be Yellow or Gray
+               if count g answer == 1 && count g guess == 1
+                then (g, Yellow)
+                else let 
+                    gInGuessCount :: Int
+                    gInGuessCount = 
+                        count g 
+                        $ map fst
+                        $ filter snd 
+                        $ take i 
+                        $ zip guess 
+                        $ zipWith (/=) guess answer
+                    
+                    gInAnswerCount :: Int
+                    gInAnswerCount = count g nonGreensInAnswer
+
+                    in (g, if gInGuessCount < gInAnswerCount then Yellow else Gray)
+
+-- for QuickCheck
+newtype WordleWord = WordleWord String deriving (Show, Eq)
+
+instance Arbitrary WordleWord where
+    arbitrary = oneof (map return $ map WordleWord finalWords)
+
+allGreen :: Feedback -> Bool
+allGreen xs = all isGreen $ map snd xs
+
+solve :: [String] -> WordleState -> String -> Bool
+solve canidates feedbacks answer = 
+    case nextGuess canidates feedbacks of 
+        [] -> False
+        (guess : newCandidates) ->
+            let newFeedback = giveFeedback guess answer
+            in allGreen newFeedback
+                || solve newCandidates (newFeedback : feedbacks) answer
+
+prop_solve :: WordleWord -> Bool
+prop_solve (WordleWord answer) = solve allWords [] answer
