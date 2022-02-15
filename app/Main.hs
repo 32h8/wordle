@@ -157,7 +157,7 @@ giveFeedback guess answer =
 newtype WordleWord = WordleWord String deriving (Show, Eq)
 
 instance Arbitrary WordleWord where
-    arbitrary = oneof (map return $ map WordleWord finalWords)
+    arbitrary = elements $ map WordleWord finalWords
 
 allGreen :: Feedback -> Bool
 allGreen xs = all isGreen $ map snd xs
