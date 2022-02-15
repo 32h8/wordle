@@ -162,14 +162,17 @@ instance Arbitrary WordleWord where
 allGreen :: Feedback -> Bool
 allGreen xs = all isGreen $ map snd xs
 
-solve :: [String] -> WordleState -> String -> Bool
-solve canidates feedbacks answer = 
+solve :: Int -> [String] -> WordleState -> String -> (Bool, Int)
+solve i canidates feedbacks answer = 
     case nextGuess canidates feedbacks of 
-        [] -> False
+        [] -> (False, i)
         (guess : newCandidates) ->
             let newFeedback = giveFeedback guess answer
-            in allGreen newFeedback
-                || solve newCandidates (newFeedback : feedbacks) answer
+            in if allGreen newFeedback
+                then (True, i)
+                else solve (i+1) newCandidates (newFeedback : feedbacks) answer
 
-prop_solve :: WordleWord -> Bool
-prop_solve (WordleWord answer) = solve allWords [] answer
+prop_solve :: WordleWord -> Property
+prop_solve (WordleWord answer) = 
+    let (b, i) = solve 1 allWords [] answer
+    in collect i b 
