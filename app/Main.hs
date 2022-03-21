@@ -168,11 +168,13 @@ solve i canidates feedbacks answer =
         [] -> (False, i)
         (guess : newCandidates) ->
             let newFeedback = giveFeedback guess answer
-            in if allGreen newFeedback
-                then (True, i)
-                else solve (i+1) newCandidates (newFeedback : feedbacks) answer
+            in if guess == answer
+                then (allGreen newFeedback, i)
+                else if elem answer newCandidates
+                    then solve (i+1) newCandidates (newFeedback : feedbacks) answer
+                    else (False, i)
 
 prop_solve :: WordleWord -> Property
 prop_solve (WordleWord answer) = 
     let (b, i) = solve 1 allWords [] answer
-    in collect i b 
+    in collect ("guesses: " ++ show i) b 
